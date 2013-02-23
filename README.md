@@ -1,4 +1,4 @@
 gamecontest1
 ============
 
-For the windows 7 contest
+For the windows 8 game development intro and contest

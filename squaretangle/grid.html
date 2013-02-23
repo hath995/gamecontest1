@@ -2,16 +2,29 @@
 <head>
 <style>
 .block {
-	width: 1em;
-	height: 1em;
+	width: 2em;
+	height: 2em;
+	border: 1px solid #999999;
+	position: absolute; 
 }
 
 .blue {
 	background-color: blue;
 }
 
+.pink {
+	background-color: pink;
+}
+
 .destination {
 	background-color: #FFDDDD;
+}
+
+.edge {
+}
+
+.edge-highlight {
+	background-color: green;
 }
 </style>
 
@@ -19,8 +32,20 @@
 <script>
 var grid = [];
 var walls = [];
-grid_width = 40;
-grid_height = 30;
+grid_width = 35;
+grid_height = 20;
+var WHITE = 0;
+var BLUE = 1;
+var PINK = 2;
+var DEST = 3;
+
+var pinkSquare = {x:0,y:0};
+	var newSquareState = true;
+	function newSquare() {
+		jQuery("#"+pinkSquare.y+"_"+pinkSquare.x+"").removeClass("pink");
+		newSquareState = true;
+		jQuery(".edge").addClass("edge-highlight");
+	}
 
 for (var i=0; i<grid_height; i++) {
 	var row = [];
@@ -62,8 +87,12 @@ for (var i=0; i<grid_width*grid_height*6; i++) {
 for (var i=0; i<grid_height; i++) {
 	for (var j=0; j<grid_width; j++) {
 		if ( (j > grid_width/2 - 4) && (j < grid_width/2 + 4) && 
-			 (i > grid_height/2 - 3) && (i < grid_height/2 + 3)) {
-			walls[i][j] = 0;
+			 (i > grid_height/2 - 2) && (i < grid_height/2 + 3)) {
+			 if ( (j > grid_width/2 - 3) && (j < grid_width/2 + 2) && 
+			 	(i > grid_height/2 - 1) && (i < grid_height/2 + 2)) {
+			 	grid[i][j] = DEST;
+			}
+			walls[i][j] = WHITE;
 		}
 	}
 }
@@ -75,10 +104,13 @@ jQuery(function() {
 			if (grid[i][j] == 1) {
 				color = "blue";
 			}
-			if (grid[i][j] == 2) {
+			if (grid[i][j] == 3) {
 				color = "destination";
 			}
-			jQuery(document.body).append("<div id='"+i+"_"+j+"' class='block "+color+"' style='position: absolute; left:"+j+"em; top:"+i+"em;'/>");
+			if (i == 0 || j == 0 || j == grid[i].length-1 || i == grid.length-1) {
+				color += " edge edge-highlight";
+			}
+			jQuery("#playingfield").append("<div id='"+i+"_"+j+"' class='block "+color+"' style='left:"+(j*2)+"em; top:"+(i*2)+"em;'/>");
 		}
 	}
 	
@@ -100,8 +132,8 @@ jQuery(function() {
 		toReveal[rand2] = temp;
 	}
 	
-	var i=0;
-	
+	var wallCounter=0;
+	/*
 	var interval = setInterval(function(){
 		var next = toReveal[i++];
 		grid[next[0],next[1]] = 1;
@@ -110,10 +142,152 @@ jQuery(function() {
 			clearInterval(interval);
 		}
 	}, 10);
+	*/
+	
+	function spawnWall(){
+		if (wallCounter < toReveal.length) { 
+			var next = toReveal[wallCounter];
+			if (grid[next[0]][next[1]] != PINK) {
+				grid[next[0]][next[1]] = BLUE;
+				jQuery("#"+next[0]+"_"+next[1]+"").addClass("blue");
+				wallCounter++;
+			}
+		}
+	}
+	
+	//var pinkSquare = {x:grid_width/2,y:0};
+	
+	var LEFT = 0;
+	var RIGHT = 1;
+	var UP = 2;
+	var DOWN = 3;
+	
+	function checkVictory() {
+		for (var i=0; i<grid_height; i++) {
+			for (var j=0; j<grid_width; j++) {
+			 	if (grid[i][j] == DEST){
+			 		return false;
+			 	}
+			}
+		 }
+		 
+		 return true;
+	}
+	
+	function movePinkSquare(dir) {
+		grid[pinkSquare.y][pinkSquare.x] = 0;
+		var previous = jQuery("#"+pinkSquare.y+"_"+pinkSquare.x+"");
+		
+		switch (dir) {
+		case LEFT:
+			if(pinkSquare.x != 0) { 
+				if(grid[pinkSquare.y][pinkSquare.x-1] == BLUE || grid[pinkSquare.y][pinkSquare.x-1] == PINK) {
+					throw new Error("Blue");
+				}
+				pinkSquare.x--;
+			}else{
+				throw new Error("Bounds");
+			}
+			break;
+		case RIGHT:
+			if(pinkSquare.x != grid_width-1) {
+				if(grid[pinkSquare.y][pinkSquare.x+1] == BLUE || grid[pinkSquare.y][pinkSquare.x+1] == PINK) {
+					throw new Error("Blue");
+				}
+				pinkSquare.x++;
+			}else{
+				throw new Error("Bounds");
+			}
+			break;
+		case UP:
+			if(pinkSquare.y != 0) {
+				if(grid[pinkSquare.y-1][pinkSquare.x] == BLUE || grid[pinkSquare.y-1][pinkSquare.x] == PINK) {
+					throw new Error("Blue");
+				}
+				pinkSquare.y--;
+			}else{
+				throw new Error("Bounds");
+			}
+			break;
+		case DOWN:
+			if(pinkSquare.y != grid_height-1) {
+				if(grid[pinkSquare.y+1][pinkSquare.x] == BLUE || grid[pinkSquare.y+1][pinkSquare.x] == PINK) {
+					throw new Error("Blue");
+				}
+				pinkSquare.y++;
+			}else{
+				throw new Error("Bounds");
+			}
+		}
+		
+		previous.removeClass("pink");
+		jQuery("#"+pinkSquare.y+"_"+pinkSquare.x+"").addClass("pink");
+		
+		// is the square in the destination rectangle?
+		// If so, create new square,etc
+		if (grid[pinkSquare.y][pinkSquare.x] == DEST) {
+			grid[pinkSquare.y][pinkSquare.x] = PINK;
+			jQuery("#"+pinkSquare.y+"_"+pinkSquare.x+"").removeClass("destination");
+			
+			
+			
+			if (checkVictory()) {
+				alert("YOU WIN!!!");
+				window.location.href = window.location.href;
+			} else{
+				newSquare();
+			}
+		} else {
+			grid[pinkSquare.y][pinkSquare.x] = PINK;
+		}
+		
+		for (var i=0; i<1; i++) {
+			spawnWall();
+		}
+	}
+	
+	jQuery(document).keydown(function(e) {
+		if(!newSquareState) {
+			try{
+				switch (e.which) {
+					case 38:
+					movePinkSquare(UP);
+						break;
+					case 40:
+					movePinkSquare(DOWN);
+					break;
+					case 37:
+					movePinkSquare(LEFT);
+						break;
+					case 39:
+					movePinkSquare(RIGHT);
+						break;
+				}
+			}catch(blah) {
+			
+			}
+		}
+	});
+	
+	jQuery(".edge").click(function() {
+		if(newSquareState) {
+			var coord = this.id.split('_');
+			pinkSquare.x = parseInt(coord[1]);
+				pinkSquare.y = parseInt(coord[0]);
+				jQuery("#"+pinkSquare.y+"_"+pinkSquare.x+"").addClass("pink");
+				newSquareState = false;
+				jQuery(".edge").removeClass("edge-highlight");
+		}
+	});
 });
 
 </script>
 </head>
 <body>
+<div id="playingfield">
+</div>
+<div id="nav" style="position:absolute;left:72em;">
+<button onClick="newSquare()">New Square</button>
+</div>
 </body>
 </html>
